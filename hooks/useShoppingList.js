@@ -1,60 +1,48 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '../context/AuthContext';
-import { createItem, deleteItem, fetchItems, setItemDone } from '../services/tasks';
-import { getErrorMessage } from '../lib/errors';
-import { ensureOnline } from '../lib/network';
+import {
+  addListItem,
+  loadList,
+  refreshList,
+  removeListItem,
+  selectListError,
+  selectListItems,
+  selectListRefreshing,
+  selectListStatus,
+  toggleListItem,
+} from '../store/listSlice';
 import useOnReconnect from './useOnReconnect';
 
 // useShoppingList() returns:
 //   { items, status, error, refreshing, reload, refresh, add, toggle, remove }
 //
-// items       the shopping list items (newest first)
-// status      'loading' | 'success' | 'error'
-// error       a friendly message when status is 'error'
-// refreshing  true while a pull-to-refresh is running
-// reload()    load the list again, showing the loading state
-// refresh()   load the list again, keeping the items on screen; returns true or false
-// add(name)   create an item, then put it at the top of the list
-// toggle(item) flip done/not done IMMEDIATELY, and flip it back if the server refuses
-// remove(item) delete on the server first, then remove the row
-//
-// add, toggle and remove all return { ok: true } or { ok: false, message }
+// The list now lives in the Redux store. The contract is the same as on Day 4:
+// add(name), toggle(item) and remove(item) answer { ok: true } or { ok: false, message }.
 export default function useShoppingList() {
   const { user } = useAuth();
   const ownerId = user?.id;
+  const dispatch = useDispatch();
 
-  const [items, setItems] = useState([]);
-  const [status, setStatus] = useState('loading');
-  const [error, setError] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
+  const items = useSelector(selectListItems);
+  const storeStatus = useSelector(selectListStatus);
+  const error = useSelector(selectListError);
+  const refreshing = useSelector(selectListRefreshing);
 
-  const reload = useCallback(async () => {
-    setStatus('loading');
-    setError('');
-    try {
-      await ensureOnline();
-      setItems(await fetchItems(ownerId));
-      setStatus('success');
-    } catch (err) {
-      setError(getErrorMessage(err));
-      setStatus('error');
-    }
-  }, [ownerId]);
+  // Before the first request starts the store says 'idle'. To the screen that is still "loading".
+  const status = storeStatus === 'idle' ? 'loading' : storeStatus;
 
-  // Pull-to-refresh: keep the items on screen and just report whether it worked.
+  const reload = useCallback(() => dispatch(loadList(ownerId)), [dispatch, ownerId]);
+
+  // Pull-to-refresh: .unwrap() turns a rejected thunk into a thrown error, so we can report true/false.
   const refresh = useCallback(async () => {
-    setRefreshing(true);
     try {
-      await ensureOnline();
-      setItems(await fetchItems(ownerId));
-      setStatus('success');
+      await dispatch(refreshList(ownerId)).unwrap();
       return true;
     } catch (err) {
       return false;
-    } finally {
-      setRefreshing(false);
     }
-  }, [ownerId]);
+  }, [dispatch, ownerId]);
 
   useEffect(() => {
     reload();
@@ -63,45 +51,22 @@ export default function useShoppingList() {
   // When the connection comes back, quietly fetch fresh data.
   useOnReconnect(refresh);
 
-  // Pessimistic: change the list only after the server has said yes.
-  const add = useCallback(async (name) => {
-    try {
-      await ensureOnline();
-      const created = await createItem(name);
-      setItems((current) => [created, ...current]);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, message: getErrorMessage(err) };
-    }
-  }, []);
+  // Dispatch a thunk and answer { ok: true } or { ok: false, message }. The rejected value is the friendly message.
+  const run = useCallback(
+    async (thunkAction) => {
+      try {
+        await dispatch(thunkAction).unwrap();
+        return { ok: true };
+      } catch (message) {
+        return { ok: false, message: typeof message === 'string' ? message : 'Something went wrong.' };
+      }
+    },
+    [dispatch]
+  );
 
-  // Optimistic: flip it now, and flip it back if the server refuses.
-  const toggle = useCallback(async (item) => {
-    const setDone = (done) =>
-      setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, done } : entry)));
-
-    setDone(!item.done);
-    try {
-      await ensureOnline();
-      await setItemDone(item.id, !item.done);
-      return { ok: true };
-    } catch (err) {
-      setDone(item.done); // the item we were given still has its old value
-      return { ok: false, message: getErrorMessage(err) };
-    }
-  }, []);
-
-  // Pessimistic: remove the row only after the server has said yes.
-  const remove = useCallback(async (item) => {
-    try {
-      await ensureOnline();
-      await deleteItem(item.id);
-      setItems((current) => current.filter((entry) => entry.id !== item.id));
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, message: getErrorMessage(err) };
-    }
-  }, []);
+  const add = useCallback((name) => run(addListItem(name)), [run]);
+  const toggle = useCallback((item) => run(toggleListItem(item)), [run]);
+  const remove = useCallback((item) => run(removeListItem(item)), [run]);
 
   return { items, status, error, refreshing, reload, refresh, add, toggle, remove };
 }

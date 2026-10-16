@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { View, FlatList, RefreshControl, StyleSheet } from 'react-native';
+import { View, FlatList, Linking, RefreshControl, StyleSheet } from 'react-native';
 import { Button, Divider, IconButton, List, Snackbar, Text, TextInput } from 'react-native-paper';
 import ErrorState from '../components/ErrorState';
 import ListSkeleton from '../components/ListSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import useShoppingList from '../hooks/useShoppingList';
+import useLocationTags from '../hooks/useLocationTags';
 import useScreenLog from '../hooks/useScreenLog';
+import { formatCoords } from '../utils/format';
 import { colors, spacing } from '../theme';
 
 function EmptyList() {
@@ -21,6 +23,8 @@ export default function ShoppingListScreen() {
   useScreenLog();
   const { items, status, error, refreshing, reload, refresh, add, toggle, remove } =
     useShoppingList();
+  const { tags, tagItem, clearTag } = useLocationTags();
+  const [needsSettings, setNeedsSettings] = useState(false);
   const [name, setName] = useState('');
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState('');
@@ -29,7 +33,21 @@ export default function ShoppingListScreen() {
 
   // add, toggle and remove all answer { ok, message }, so one helper shows any failure.
   const showFailure = (result) => {
+    setNeedsSettings(false);
     if (!result.ok) setMessage(result.message);
+  };
+
+  // One tap tags the item with where you are; another tap removes the tag.
+  const handleTag = async (item) => {
+    if (tags[item.id]) {
+      clearTag(item.id);
+      return;
+    }
+    const result = await tagItem(item.id);
+    if (!result.ok) {
+      setNeedsSettings(Boolean(result.needsSettings));
+      setMessage(result.message);
+    }
   };
 
   const handleAdd = async () => {
@@ -80,10 +98,12 @@ export default function ShoppingListScreen() {
 
       <FlatList
         data={items}
+        extraData={tags}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <List.Item
             title={item.name}
+            description={tags[item.id] ? `Tagged at ${formatCoords(tags[item.id])}` : undefined}
             titleStyle={item.done ? styles.done : undefined}
             onPress={() => toggle(item).then(showFailure)}
             left={() => (
@@ -93,11 +113,23 @@ export default function ShoppingListScreen() {
               />
             )}
             right={() => (
-              <IconButton
-                icon="delete-outline"
-                accessibilityLabel={`Remove ${item.name}`}
-                onPress={() => remove(item).then(showFailure)}
-              />
+              <View style={styles.actions}>
+                <IconButton
+                  icon={tags[item.id] ? 'map-marker-check' : 'map-marker-plus-outline'}
+                  iconColor={tags[item.id] ? colors.primary : colors.muted}
+                  accessibilityLabel={
+                    tags[item.id]
+                      ? `Remove location tag from ${item.name}`
+                      : `Tag ${item.name} with my location`
+                  }
+                  onPress={() => handleTag(item)}
+                />
+                <IconButton
+                  icon="delete-outline"
+                  accessibilityLabel={`Remove ${item.name}`}
+                  onPress={() => remove(item).then(showFailure)}
+                />
+              </View>
             )}
           />
         )}
@@ -115,7 +147,12 @@ export default function ShoppingListScreen() {
         keyboardDismissMode="on-drag"
       />
 
-      <Snackbar visible={message !== ''} onDismiss={() => setMessage('')} duration={2500}>
+      <Snackbar
+        visible={message !== ''}
+        onDismiss={() => setMessage('')}
+        duration={2500}
+        action={needsSettings ? { label: 'Settings', onPress: () => Linking.openSettings() } : undefined}
+      >
         {message}
       </Snackbar>
     </View>
@@ -140,6 +177,10 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   done: {
     textDecorationLine: 'line-through',
