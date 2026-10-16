@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
 import { Button, Card, Text } from 'react-native-paper';
+import PositionMap from '../components/PositionMap';
 import useLocation from '../hooks/useLocation';
 import { colors, spacing } from '../theme';
 
@@ -9,22 +8,6 @@ export default function LocationScreen() {
   const { permission, position, tracking, updates, error, findMe, startTracking, stopTracking } =
     useLocation();
   const denied = permission && !permission.granted;
-  const mapRef = useRef(null);
-
-  // Keep the map centred on the latest position, with a short animation.
-  useEffect(() => {
-    if (position) {
-      mapRef.current?.animateToRegion(
-        {
-          latitude: position.latitude,
-          longitude: position.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        },
-        500
-      );
-    }
-  }, [position]);
 
   return (
     <View style={styles.screen}>
@@ -61,23 +44,7 @@ export default function LocationScreen() {
 
       {error !== '' && <Text style={styles.error}>{error}</Text>}
 
-      {position && (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          initialRegion={{
-            latitude: position.latitude,
-            longitude: position.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-        >
-          <Marker
-            coordinate={{ latitude: position.latitude, longitude: position.longitude }}
-            title="You are here"
-          />
-        </MapView>
-      )}
+      {position && <PositionMap position={position} style={styles.map} />}
 
       {position && (
         <Card style={styles.card}>
