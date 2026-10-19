@@ -105,43 +105,46 @@ export default function ShoppingListScreen() {
     <View style={styles.screen}>
       <OfflineBanner />
 
-      <View style={styles.addRow}>
-        <TextInput
-          style={styles.input}
-          mode="outlined"
-          label="Add an item"
-          accessibilityLabel="New item"
-          value={name}
-          onChangeText={setName}
-          onSubmitEditing={handleAdd}
-          returnKeyType="done"
-          blurOnSubmit={false}
-        />
-        <Button mode="contained" onPress={handleAdd} disabled={!canAdd} loading={adding}>
-          Add
-        </Button>
-      </View>
-
-      <ListSummary items={items} />
-
-      <FlatList
-        data={items}
-        extraData={tags}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        ItemSeparatorComponent={Divider}
-        ListEmptyComponent={emptyComponent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.primary}
+      {/* On an iPad the list would stretch across the whole screen. Keep it a readable width, centred. */}
+      <View style={styles.column}>
+        <View style={styles.addRow}>
+          <TextInput
+            style={styles.input}
+            mode="outlined"
+            label="Add an item"
+            accessibilityLabel="New item"
+            value={name}
+            onChangeText={setName}
+            onSubmitEditing={handleAdd}
+            returnKeyType="done"
+            blurOnSubmit={false}
           />
-        }
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      />
+          <Button mode="contained" onPress={handleAdd} disabled={!canAdd} loading={adding}>
+            Add
+          </Button>
+        </View>
+
+        <ListSummary items={items} />
+
+        <FlatList
+          data={items}
+          extraData={tags}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          ItemSeparatorComponent={Divider}
+          ListEmptyComponent={emptyComponent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        />
+      </View>
 
       <Snackbar
         visible={message !== ''}
@@ -159,6 +162,12 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  column: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
   addRow: {
     flexDirection: 'row',
