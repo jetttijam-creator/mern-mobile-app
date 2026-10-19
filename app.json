@@ -56,7 +56,8 @@
         {
           "color": "#1e6fd9"
         }
-      ]
+      ],
+      "expo-image"
     ]
   }
 }
