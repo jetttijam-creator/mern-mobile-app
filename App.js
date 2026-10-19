@@ -1,3 +1,4 @@
+import { LogBox } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
 import { Provider } from 'react-redux';
@@ -10,6 +11,10 @@ import SplashScreen from './components/SplashScreen';
 import { persistor, store } from './store';
 import { paperTheme } from './theme';
 import { configureNotificationHandler } from './lib/notifications';
+
+// expo-notifications warns on every start in Expo Go on Android that remote push needs a development build.
+// Local notifications still work there, so hide that one message.
+LogBox.ignoreLogs(['[expo-notifications] Push notifications (remote notifications) are unavailable']);
 
 configureNotificationHandler();
 
