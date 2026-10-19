@@ -1,4 +1,5 @@
-import { screen, userEvent } from '@testing-library/react-native';
+import { act, screen, userEvent } from '@testing-library/react-native';
+import { addItem } from '../store/cartSlice';
 import CartScreen from '../screens/CartScreen';
 import { renderWithStore } from '../test-utils/renderWithStore';
 
@@ -30,4 +31,23 @@ test('removing an item updates the screen and the store', async () => {
   expect(screen.queryByText('Canvas Tote Bag')).toBeNull();
   expect(screen.getByText('Bucket Hat')).toBeTruthy();
   expect(store.getState().cart.items).toHaveLength(1);
+});
+
+test('changing one cart line re-renders only that row', () => {
+  const rendered = [];
+  jest.spyOn(console, 'log').mockImplementation((tag, name, id) => {
+    if (tag === '[render]' && name === 'CartRow') rendered.push(id);
+  });
+  const { store } = renderWithStore(<CartScreen />, {
+    preloadedState: { cart: { items: [{ product: tote, quantity: 1 }, { product: hat, quantity: 1 }] } },
+  });
+
+  rendered.length = 0;
+  act(() => {
+    store.dispatch(addItem(tote));
+  });
+
+  console.info('CART rows rendered:', rendered);
+  expect(rendered).toEqual(['1']);
+  jest.restoreAllMocks();
 });
