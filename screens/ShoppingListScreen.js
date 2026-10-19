@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, FlatList, Linking, RefreshControl, StyleSheet } from 'react-native';
-import { Button, Divider, IconButton, List, Snackbar, Text, TextInput } from 'react-native-paper';
+import { Button, Divider, Snackbar, Text, TextInput } from 'react-native-paper';
 import ErrorState from '../components/ErrorState';
 import ListSkeleton from '../components/ListSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
+import ShoppingRow from '../components/ShoppingRow';
 import useShoppingList from '../hooks/useShoppingList';
 import useLocationTags from '../hooks/useLocationTags';
 import useScreenLog from '../hooks/useScreenLog';
-import { formatCoords } from '../utils/format';
 import { colors, spacing } from '../theme';
+
+const keyExtractor = (item) => item.id;
 
 function EmptyList() {
   return (
@@ -32,23 +34,46 @@ export default function ShoppingListScreen() {
   const canAdd = name.trim() !== '' && !adding;
 
   // add, toggle and remove all answer { ok, message }, so one helper shows any failure.
-  const showFailure = (result) => {
+  // Every handler is wrapped in useCallback so the memo'd ShoppingRow sees the same function each render.
+  // The state setters never change identity, so they are safe dependencies.
+  const showFailure = useCallback((result) => {
     setNeedsSettings(false);
     if (!result.ok) setMessage(result.message);
-  };
+  }, []);
+
+  const handleToggle = useCallback((item) => toggle(item).then(showFailure), [toggle, showFailure]);
+  const handleRemove = useCallback((item) => remove(item).then(showFailure), [remove, showFailure]);
 
   // One tap tags the item with where you are; another tap removes the tag.
-  const handleTag = async (item) => {
-    if (tags[item.id]) {
-      clearTag(item.id);
-      return;
-    }
-    const result = await tagItem(item.id);
-    if (!result.ok) {
-      setNeedsSettings(Boolean(result.needsSettings));
-      setMessage(result.message);
-    }
-  };
+  // The row says whether it already has a tag, so this callback does not depend on `tags`.
+  const handleTag = useCallback(
+    async (item, hasTag) => {
+      if (hasTag) {
+        clearTag(item.id);
+        return;
+      }
+      const result = await tagItem(item.id);
+      if (!result.ok) {
+        setNeedsSettings(Boolean(result.needsSettings));
+        setMessage(result.message);
+      }
+    },
+    [tagItem, clearTag]
+  );
+
+  // renderItem reads `tags`, so it changes only when a tag changes. Rows whose own tag is unchanged still skip.
+  const renderItem = useCallback(
+    ({ item }) => (
+      <ShoppingRow
+        item={item}
+        tag={tags[item.id]}
+        onToggle={handleToggle}
+        onTag={handleTag}
+        onRemove={handleRemove}
+      />
+    ),
+    [tags, handleToggle, handleTag, handleRemove]
+  );
 
   const handleAdd = async () => {
     if (!canAdd) return;
@@ -99,40 +124,8 @@ export default function ShoppingListScreen() {
       <FlatList
         data={items}
         extraData={tags}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <List.Item
-            title={item.name}
-            description={tags[item.id] ? `Tagged at ${formatCoords(tags[item.id])}` : undefined}
-            titleStyle={item.done ? styles.done : undefined}
-            onPress={() => toggle(item).then(showFailure)}
-            left={() => (
-              <List.Icon
-                icon={item.done ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                color={item.done ? colors.success : colors.muted}
-              />
-            )}
-            right={() => (
-              <View style={styles.actions}>
-                <IconButton
-                  icon={tags[item.id] ? 'map-marker-check' : 'map-marker-plus-outline'}
-                  iconColor={tags[item.id] ? colors.primary : colors.muted}
-                  accessibilityLabel={
-                    tags[item.id]
-                      ? `Remove location tag from ${item.name}`
-                      : `Tag ${item.name} with my location`
-                  }
-                  onPress={() => handleTag(item)}
-                />
-                <IconButton
-                  icon="delete-outline"
-                  accessibilityLabel={`Remove ${item.name}`}
-                  onPress={() => remove(item).then(showFailure)}
-                />
-              </View>
-            )}
-          />
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
         ItemSeparatorComponent={Divider}
         ListEmptyComponent={emptyComponent}
         refreshControl={
