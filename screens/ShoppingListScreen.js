@@ -5,6 +5,7 @@ import ErrorState from '../components/ErrorState';
 import ListSkeleton from '../components/ListSkeleton';
 import OfflineBanner from '../components/OfflineBanner';
 import ShoppingRow from '../components/ShoppingRow';
+import ListSummary from '../components/ListSummary';
 import useShoppingList from '../hooks/useShoppingList';
 import useLocationTags from '../hooks/useLocationTags';
 import useScreenLog from '../hooks/useScreenLog';
@@ -120,6 +121,8 @@ export default function ShoppingListScreen() {
           Add
         </Button>
       </View>
+
+      <ListSummary items={items} />
 
       <FlatList
         data={items}
