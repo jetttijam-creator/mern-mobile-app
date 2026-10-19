@@ -9,6 +9,9 @@ import { PersistGate } from 'redux-persist/integration/react';
 import SplashScreen from './components/SplashScreen';
 import { persistor, store } from './store';
 import { paperTheme } from './theme';
+import { configureNotificationHandler } from './lib/notifications';
+
+configureNotificationHandler();
 
 export default function App() {
   return (
