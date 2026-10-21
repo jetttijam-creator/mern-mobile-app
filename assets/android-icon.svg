@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#1e6fd9"/>
+  <!-- shopping bag, kept inside the central safe zone (adaptive icons crop the outer third) -->
+  <path d="M372 400 C372 300 442 250 512 250 C582 250 652 300 652 400" fill="none" stroke="#ffffff" stroke-width="40" stroke-linecap="round"/>
+  <path d="M330 390 L694 390 Q722 390 726 418 L752 700 Q756 744 712 744 L312 744 Q268 744 272 700 L298 418 Q302 390 330 390 Z" fill="#ffffff"/>
+  <circle cx="412" cy="470" r="26" fill="#1e6fd9"/>
+  <circle cx="612" cy="470" r="26" fill="#1e6fd9"/>
+</svg>
