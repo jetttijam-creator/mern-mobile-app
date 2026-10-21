@@ -42,3 +42,6 @@ yarn-error.*
 
 # local overrides (e.g. the Mac address for a phone test)
 .env.local
+
+# Android Studio
+.idea/

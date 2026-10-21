@@ -26,7 +26,9 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "package": "com.phoenixone.shopfront.jett",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
